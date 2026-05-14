@@ -10,9 +10,11 @@ add_executable(OrbitSim
 )
 
 file(COPY shaders DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY models DESTINATION ${CMAKE_BINARY_DIR})
 
 target_include_directories(OrbitSim PRIVATE
     external/glad/include
+    external/assimp/include
     include
 )
 
@@ -21,6 +23,7 @@ find_package(glfw3 REQUIRED)
 target_link_libraries(OrbitSim PRIVATE
     glfw
     dl
+    assimp
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

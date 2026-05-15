@@ -1,19 +1,26 @@
+#include <iostream>
+#include <string>
+#include <format>
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-#include <iostream>
 #include "shader.h"
 #include "model.h"
 #include "camera.h"
 #include "simulation.h"
 #include "celestialBody.h"
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1280;
+const unsigned int SCR_HEIGHT = 720;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 50.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 100.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -79,7 +86,8 @@ int main()
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
@@ -93,6 +101,14 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glViewport(0, 0, 1280, 720);
     stbi_set_flip_vertically_on_load(true);
+
+    // IMGUI
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 460");
 
     Triangle triangle;
 
@@ -108,18 +124,18 @@ int main()
 
     CelestialBody planet(
         &planetModel,
-        1000000000000000.0f,
-        6.4f,
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
+        20.0f,
+        1.0f,
+        glm::vec3(0.0f,0.0f,0.0f),
+        glm::vec3(0.0f)
     );
 
     CelestialBody moon(
         &planetModel,
-        2290.0f,
-        1.75f,
-        glm::vec3(0.0f, 71.4f, 0.0f),
-        glm::vec3(1.0f, 0.0f, 0.0f)
+        1.0f,
+        0.5f,
+        glm::vec3(28.28f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 20.0f, 0.0f)
     );
 
     bodies.push_back(planet);
@@ -127,10 +143,21 @@ int main()
 
     Simulation mySimulation(bodies, &camera, &ourShader);
 
+    bool drawSimulation = true;
+    float sliderVal = 0.0f;
+    float color[4] = {0.0f, 1.0f, 1.0f, 1.0f};
+
+    bool isSimulationRunning = false;
+
     while (!glfwWindowShouldClose(window))
     {
         glClearColor(0.1f, 0.2f, 0.00f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // UI
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -141,8 +168,13 @@ int main()
         defaultShader.use();
         triangle.Draw();
 
-        mySimulation.Update();
-        mySimulation.Render();
+        if (isSimulationRunning){
+            mySimulation.Update();
+        }
+
+        if(drawSimulation){
+            mySimulation.Render();
+        }
 
         // // don't forget to enable shader before setting uniforms
         // ourShader.use();
@@ -162,6 +194,55 @@ int main()
 
         // Simulation
 
+        ImGui::Begin("Hello world!");
+        ImGui::Text("Hello there!");
+        ImGui::Checkbox("Draw?", &drawSimulation);
+
+        if (!isSimulationRunning){
+            if(ImGui::Button("Start Simulation!")){
+                std::cout << "Pressed Start!" << '\n';
+                isSimulationRunning = true;
+                mySimulation.StartSimulation();
+            }
+
+            for (size_t i = 0; i < mySimulation.bodies.size(); i++)
+            {
+                ImGui::PushID(i);
+                std::string label = "Celestial Body " + std::to_string(i);
+
+                if (ImGui::CollapsingHeader(label.c_str())){
+                    ImGui::Text("Celestial body");
+    
+                    CelestialBody& body = mySimulation.bodies[i];
+                    
+                    glm::vec3 pos = body.startPosition;
+                    if (ImGui::SliderFloat3("Initial Position", glm::value_ptr(pos), -100.0f, 100.0f))
+                    {
+                        body.SetStartPosition(pos); // only called when slider is changed
+                    }
+                }
+
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::PopID();
+            }
+
+        } else{
+            if(ImGui::Button("End Simulation!")){
+                std::cout << "Pressed End!" << '\n';
+                isSimulationRunning = false;
+                mySimulation.EndSimulation();
+            }
+
+        }
+
+        ImGui::SliderFloat("Slider", &sliderVal, 0.0f, 1e3f);
+        ImGui::ColorEdit4("Color", color);
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -170,6 +251,9 @@ int main()
     // glDeleteBuffers(1, &VBO);
 
     glfwTerminate();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui::DestroyContext();
 
     return 0;
 }
@@ -207,7 +291,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    // camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)

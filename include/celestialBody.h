@@ -22,34 +22,36 @@ class CelestialBody
 public:
     float mass;
     float radius;
-    glm::vec3 position = glm::vec3(0.0);
-    glm::vec3 initialVelocity = glm::vec3(0.0);
+    glm::vec3 initialVelocity = glm::vec3(0.0f);
+    glm::vec3 startPosition = glm::vec3(0.0f);
 
     CelestialBody(Model* model, float _mass, float _radius, glm::vec3 initialVel, glm::vec3 initialPos) : model(model) {
         initialVelocity = initialVel;
-        position = initialPos;
+        this->startPosition = initialPos;
+        this->position = initialPos;
         mass = _mass;
         radius = _radius;
         Awake();
     }
-    
-    void UpdateVelocity(const std::vector<CelestialBody>& allBodies, float timeStep){
 
+    void Init(){
+        Awake();
+    }
+    
+    void UpdateVelocity(const std::vector<CelestialBody>& allBodies, float timeStep, size_t selfIndex){
         for (size_t i = 0; i < allBodies.size(); i++)
         {
-            const CelestialBody& other = allBodies.at(i);
+            if (i == selfIndex) continue;
 
-            if (&other != this) {
-                glm::vec3 difference = other.position - this->position;
-                
-                float sqrDist = glm::dot(difference, difference);
-                glm::vec3 forceDir = glm::normalize(difference);
-                glm::vec3 force = forceDir * gravitationalConstant * mass * other.mass / sqrDist;
-                glm::vec3 acceleration = force / mass;
-                this->currentVelocity += acceleration * timeStep;
-
-                std::cout<<glm::to_string(this->currentVelocity)<<std::endl;
-            }
+            const CelestialBody& other = allBodies[i];
+            glm::vec3 difference = other.position - this->position;
+            
+            float sqrDist = glm::dot(difference, difference);
+            if (sqrDist < 0.0001f) continue; // avoid division by zero on collision
+            
+            glm::vec3 forceDir = glm::normalize(difference);
+            glm::vec3 acceleration = forceDir * gravitationalConstant * other.mass / sqrDist;
+            this->currentVelocity += acceleration * timeStep;
         }
     }
 
@@ -66,12 +68,27 @@ public:
         model->Draw(*shader);
     }
 
+    void Reset(){
+        this->position = startPosition;
+        currentVelocity = glm::vec3(0.0f);
+    }
+
+    void SetStartPosition(glm::vec3 newPos){
+        this->startPosition = newPos;
+        this->position = newPos;
+    }
+
+    void SetInitialVelocity(glm::vec3 newVel){
+        this->initialVelocity = newVel;
+    }
+
 private:
     void Awake(){
         currentVelocity = initialVelocity;
     }
 
-    glm::vec3 currentVelocity = glm::vec3(0.0);
+    glm::vec3 currentVelocity = glm::vec3(0.0f);
+    glm::vec3 position = glm::vec3(0.0f);
     Model* model;
 };
 

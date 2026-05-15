@@ -10,15 +10,31 @@
 class Simulation {
 
 public:
+    std::vector<CelestialBody> bodies;
+
     Simulation(std::vector<CelestialBody>& allBodies, Camera* cam, Shader* shaderProgram)
         : bodies(allBodies), shader(shaderProgram), camera(cam) {
 
     }
 
+    void StartSimulation(){
+        for (size_t i = 0; i < bodies.size(); i++)
+        {
+            bodies[i].Init();
+        }
+    }
+
+    void EndSimulation(){
+         for (size_t i = 0; i < bodies.size(); i++)
+        {
+            bodies[i].Reset();
+        }
+    }
+
     void Update(){
         for (size_t i = 0; i < bodies.size(); i++)
         {
-            bodies[i].UpdateVelocity(bodies, timeStep);
+            bodies[i].UpdateVelocity(bodies, timeStep,i);
         }
 
         for (size_t i = 0; i < bodies.size(); i++)
@@ -31,7 +47,7 @@ public:
     void Render(){
         shader->use();
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), (float)1280 / (float)720, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera->Zoom), (float)1280 / (float)720, 0.1f, 100000.0f);
         glm::mat4 view = camera->GetViewMatrix();
         shader->setMat4("projection", projection);
         shader->setMat4("view", view);
@@ -43,7 +59,6 @@ public:
     }
 
 private:
-    std::vector<CelestialBody> bodies;
     float fixedDeltaTime = timeStep;
 
     Shader* shader;

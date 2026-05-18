@@ -148,6 +148,12 @@ int main()
     float color[4] = {0.0f, 1.0f, 1.0f, 1.0f};
 
     bool isSimulationRunning = false;
+    bool isSimulationPaused = false;
+
+    float _mass = 1.0;
+    float _radius = 1.0;
+    glm::vec3 _vel = glm::vec3(0.0f);
+    glm::vec3 _pos = glm::vec3(0.0f);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -168,7 +174,7 @@ int main()
         defaultShader.use();
         triangle.Draw();
 
-        if (isSimulationRunning){
+        if (isSimulationRunning && !isSimulationPaused){
             mySimulation.Update();
         }
 
@@ -205,6 +211,19 @@ int main()
                 mySimulation.StartSimulation();
             }
 
+            if (ImGui::CollapsingHeader("Create a celestial body!")){
+                ImGui::Text("Celestial body");
+                ImGui::SliderFloat3("Initial Position", glm::value_ptr(_pos), -100.0f, 100.0f);
+                ImGui::SliderFloat3("Initial Velocity", glm::value_ptr(_vel), -100.0f, 100.0f);
+                ImGui::SliderFloat("Mass", &_mass, 0.0f, 100000.0f);
+                ImGui::SliderFloat("Radius", &_radius, 0.0f, 100000.0f);
+
+                if(ImGui::Button("Create Body!")){
+                    CelestialBody newBody(&planetModel, _mass, _radius, _vel, _pos);
+                    mySimulation.AddBody(newBody);
+                }
+            }
+
             for (size_t i = 0; i < mySimulation.bodies.size(); i++)
             {
                 ImGui::PushID(i);
@@ -228,9 +247,22 @@ int main()
             }
 
         } else{
+            if(!isSimulationPaused){
+                if(ImGui::Button("Pause Simulation")){
+                    std::cout << "Pressed pause!" << '\n';
+                    isSimulationPaused = true;
+                }
+            }else{
+                if(ImGui::Button("Continue Simulation")){
+                    std::cout << "Pressed continue!" << '\n';
+                    isSimulationPaused = false;
+                }
+            }
+            
             if(ImGui::Button("End Simulation!")){
                 std::cout << "Pressed End!" << '\n';
                 isSimulationRunning = false;
+                isSimulationPaused = false;
                 mySimulation.EndSimulation();
             }
 

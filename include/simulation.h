@@ -31,6 +31,10 @@ public:
         }
     }
 
+    void AddBody(CelestialBody body){
+        bodies.push_back(body);
+    }
+
     void Update(){
         for (size_t i = 0; i < bodies.size(); i++)
         {

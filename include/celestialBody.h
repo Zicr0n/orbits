@@ -22,6 +22,9 @@ class CelestialBody
 public:
     float mass;
     float radius;
+    glm::vec3 currentVelocity = glm::vec3(0.0f);
+    glm::vec3 position = glm::vec3(0.0f);
+    
     glm::vec3 initialVelocity = glm::vec3(0.0f);
     glm::vec3 startPosition = glm::vec3(0.0f);
 
@@ -87,8 +90,7 @@ private:
         currentVelocity = initialVelocity;
     }
 
-    glm::vec3 currentVelocity = glm::vec3(0.0f);
-    glm::vec3 position = glm::vec3(0.0f);
+
     Model* model;
 };
 

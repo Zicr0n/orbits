@@ -35,6 +35,10 @@ public:
         bodies.push_back(body);
     }
 
+    void RemoveBody(size_t index) {
+        bodies.erase(bodies.begin() + index);
+    }
+
     void Update(){
         for (size_t i = 0; i < bodies.size(); i++)
         {
@@ -60,6 +64,23 @@ public:
         {
             bodies[i].Render(shader);
         }
+    }
+
+    void FocusAll(Camera& camera) {
+        if (bodies.empty()) return;
+
+        glm::vec3 center(0.0f);
+        for (const auto& body : bodies)
+            center += body.position;
+
+        center /= bodies.size();
+
+        float maxDist = 0.0f;
+        for (const auto& body : bodies)
+            maxDist = glm::max(maxDist, glm::length(body.position - center));
+
+        camera.Position = center + glm::vec3(0.0f, 0.0f, maxDist * 10.0f);
+        camera.LookAt(center);
     }
 
 private:

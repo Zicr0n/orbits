@@ -76,7 +76,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window =
-        glfwCreateWindow(1280, 720, "Orbits", nullptr, nullptr);
+        glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Orbits", nullptr, nullptr);
 
     if (!window)
     {
@@ -99,7 +99,7 @@ int main()
 
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEPTH_TEST);
-    glViewport(0, 0, 1280, 720);
+    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     stbi_set_flip_vertically_on_load(true);
 
     // IMGUI
@@ -107,8 +107,14 @@ int main()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
+
+    // CUBEMAP
+
+    //--------
 
     Triangle triangle;
 
@@ -171,9 +177,6 @@ int main()
 
         processInput(window);
 
-        defaultShader.use();
-        triangle.Draw();
-
         if (isSimulationRunning && !isSimulationPaused){
             mySimulation.Update();
         }
@@ -181,22 +184,6 @@ int main()
         if(drawSimulation){
             mySimulation.Render();
         }
-
-        // // don't forget to enable shader before setting uniforms
-        // ourShader.use();
-
-        // // view/projection transformations
-        // glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        // glm::mat4 view = camera.GetViewMatrix();
-        // ourShader.setMat4("projection", projection);
-        // ourShader.setMat4("view", view);
-
-        // // render the loaded model
-        // glm::mat4 model = glm::mat4(1.0f);
-        // model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        // model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-        // ourShader.setMat4("model", model);
-        // ourModel.Draw(ourShader);
 
         // Simulation
 
@@ -224,6 +211,8 @@ int main()
                 }
             }
 
+            ImGui::Spacing();
+
             for (size_t i = 0; i < mySimulation.bodies.size(); i++)
             {
                 ImGui::PushID(i);
@@ -234,11 +223,55 @@ int main()
     
                     CelestialBody& body = mySimulation.bodies[i];
                     
+                    // Start Position
                     glm::vec3 pos = body.startPosition;
                     if (ImGui::SliderFloat3("Initial Position", glm::value_ptr(pos), -100.0f, 100.0f))
                     {
                         body.SetStartPosition(pos); // only called when slider is changed
                     }
+
+                    ImGui::Spacing();
+
+                    // Start Velocity
+                    glm::vec3 vel = body.initialVelocity;
+                    if (ImGui::SliderFloat3("Initial Velocity", glm::value_ptr(vel), -100.0f, 100.0f))
+                    {
+                        body.SetInitialVelocity(vel); // only called when slider is changed
+                    }
+
+                    ImGui::Spacing();
+
+                    // Mass
+                    float mass = body.mass;
+                    if (ImGui::SliderFloat("Mass", &mass, 0.0f, 100.0f))
+                    {
+                        body.mass = mass; // only called when slider is changed
+                    }
+
+                    ImGui::Spacing();
+
+                    // Radius
+                    float radius = body.radius;
+                    if (ImGui::SliderFloat("Radius", &radius, 0.0f, 100.0f))
+                    {
+                        body.radius = radius; // only called when slider is changed
+                    }
+
+                    ImGui::Spacing();
+
+                    // Remove button
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));
+                    bool removed = ImGui::Button("Remove Celestial Body");
+                    ImGui::PopStyleColor(3);
+
+                    if (removed) {
+                        mySimulation.RemoveBody(i);
+                        ImGui::PopID();
+                        break;
+                    }
+
                 }
 
                 ImGui::Spacing();
@@ -247,6 +280,9 @@ int main()
             }
 
         } else{
+            if (ImGui::Button("Focus All")) {
+                mySimulation.FocusAll(camera);
+            }
             if(!isSimulationPaused){
                 if(ImGui::Button("Pause Simulation")){
                     std::cout << "Pressed pause!" << '\n';
@@ -323,7 +359,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    // camera.ProcessMouseMovement(xoffset, yoffset);
+    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)

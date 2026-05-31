@@ -20,7 +20,7 @@ const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 100.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 500.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -128,24 +128,33 @@ int main()
 
     std::vector<CelestialBody> bodies;
 
-    CelestialBody planet(
+    float scale = 20.0f; // scale up positions
+    float vScale = 20.0f; // scale up velocities to match
+
+    CelestialBody b1(
         &planetModel,
-        20.0f,
-        1.0f,
-        glm::vec3(0.0f,0.0f,0.0f),
-        glm::vec3(0.0f)
+        1.0f, 0.05f,
+        glm::vec3(-0.93240737f, -0.86473146f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f)
     );
 
-    CelestialBody moon(
+    CelestialBody b2(
         &planetModel,
-        1.0f,
-        0.5f,
-        glm::vec3(28.28f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 20.0f, 0.0f)
+        1.0f, 0.05f,
+        glm::vec3(-0.97000436f, 0.24308753f, 0.0f),
+        glm::vec3(0.46620368f, 0.43236573f, 0.0f)
     );
 
-    bodies.push_back(planet);
-    bodies.push_back(moon);
+    CelestialBody b3(
+        &planetModel,
+        1.0f, 0.05f,
+        glm::vec3(0.97000436f, -0.24308753f, 0.0f),
+        glm::vec3(0.46620368f, 0.43236573f, 0.0f)
+    );
+
+    bodies.push_back(b1);
+    bodies.push_back(b2);
+    bodies.push_back(b3);
 
     Simulation mySimulation(bodies, &camera, &ourShader);
 
@@ -186,10 +195,22 @@ int main()
         }
 
         // Simulation
-
         ImGui::Begin("Hello world!");
         ImGui::Text("Hello there!");
         ImGui::Checkbox("Draw?", &drawSimulation);
+
+        ImGui::Spacing();
+
+        if(ImGui::CollapsingHeader("Universe")){
+            ImGui::SliderFloat("Gravitational Constant", &gravitationalConstant, 0.0f, 10000.0f);
+            if(ImGui::Button("Reset Gravitational Constant")){
+                resetGravConstant();
+            }
+
+            ImGui::Spacing();
+            ImGui::SliderFloat("Simulation Scale", &simulationScale, 0.0f, 1.0f);
+
+        }
 
         if (!isSimulationRunning){
             if(ImGui::Button("Start Simulation!")){
@@ -359,7 +380,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    // camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)

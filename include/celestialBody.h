@@ -54,17 +54,18 @@ public:
             
             glm::vec3 forceDir = glm::normalize(difference);
             glm::vec3 acceleration = forceDir * gravitationalConstant * other.mass / sqrDist;
-            this->currentVelocity += acceleration * timeStep;
+            this->currentVelocity += acceleration * timeStep * timeScale;
         }
     }
 
     void UpdatePosition(float timeStep) {
-        this->position += this->currentVelocity * timeStep;
+        this->position += this->currentVelocity * timeStep * timeScale;
     }
 
     void Render(Shader* shader){
         glm::mat4 model_mat = glm::mat4(1.0f);
-        model_mat = glm::translate(model_mat, this->position);
+        model_mat = glm::translate(model_mat, this->position * simulationScale);
+        // model_mat = glm::scale(model_mat, glm::vec3(radius * simulationScale));  // scale radius too
 
         shader->setMat4("model", model_mat);
 

@@ -40,15 +40,26 @@ public:
     }
 
     void Update(){
-        for (size_t i = 0; i < bodies.size(); i++)
-        {
-            bodies[i].UpdateVelocity(bodies, timeStep,i);
+        std::vector<glm::vec3> accelerations(bodies.size(), glm::vec3(0.0f));
+        
+        // Calculate accelerations
+        for (size_t i = 0; i < bodies.size(); i++) {
+            for (size_t j = 0; j < bodies.size(); j++) {
+                if (i == j) continue;
+
+                glm::vec3 diff = bodies[j].position - bodies[i].position;
+                float r = glm::length(diff);
+                if (r < 0.0001f) continue;
+
+                float force = gravitationalConstant * bodies[j].mass / (r * r);
+                accelerations[i] += glm::normalize(diff) * force;
+            }
         }
 
-        for (size_t i = 0; i < bodies.size(); i++)
-        {
-            bodies[i].UpdatePosition(timeStep);
-
+        // apply accelerations
+        for (size_t i = 0; i < bodies.size(); i++) {
+            bodies[i].currentVelocity += accelerations[i] * timeStep * timeScale;
+            bodies[i].position += bodies[i].currentVelocity * timeStep * timeScale;
         }
     }
 

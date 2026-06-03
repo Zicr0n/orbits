@@ -18,7 +18,7 @@
 unsigned int SCR_WIDTH  = 1280;
 unsigned int SCR_HEIGHT = 720;
 
-Camera camera(glm::vec3(0.0f, 0.0f, 1000.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 10.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -91,43 +91,38 @@ int main()
     glm::vec3 _vel = glm::vec3(0.0f);
     glm::vec3 _pos = glm::vec3(0.0f);
 
-    CelestialBody sun(
+    float m = 1.0f;
+
+    CelestialBody body1(
         &planetModel,
-        1e8f, 500.0f,
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec4(1.0f, 1.0f, 0.0f, 1.0f)
+        m,
+        0.1f,
+        glm::vec3( 0.4662036850f,  0.4323657300f, 0.0f),
+        glm::vec3(-0.9700043600f,  0.2430875300f, 0.0f),
+        glm::vec4(1, 0, 0, 1)
     );
 
-   float earthDistance = 40000.0f;
-    float earthOrbitVel =
-        sqrt(gravitationalConstant * 1e8f / earthDistance);
-
-    float moonDistance = 2000.0f;
-    float moonOrbitVel =
-        sqrt(gravitationalConstant * 100.0f / moonDistance);
-
-    CelestialBody earth(
+    CelestialBody body2(
         &planetModel,
-        10000.0f,
-        150.0f,
-        glm::vec3(0.0f, earthOrbitVel, 0.0f),
-        glm::vec3(earthDistance, 0.0f, 0.0f),
-        glm::vec4(0.0f, 0.5f, 1.0f, 1.0f)
+        m,
+        0.1f,
+        glm::vec3( 0.4662036850f,  0.4323657300f, 0.0f),
+        glm::vec3( 0.9700043600f, -0.2430875300f, 0.0f),
+        glm::vec4(1, 1, 0, 1)
     );
 
-    CelestialBody moon(
-       &planetModel,
-        100.0f,
-        75.0f,
-        glm::vec3(0.0f, earthOrbitVel + moonOrbitVel, 0.0f),
-        glm::vec3(earthDistance + moonDistance, 0.0f, 0.0f),
-        glm::vec4(0.5f, 0.0f, 1.0f, 1.0f)
+    CelestialBody body3(
+        &planetModel,
+        m,
+        0.1f,
+        glm::vec3(-0.9324073700f, -0.8647314600f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec4(0, 1, 1, 1)
     );
 
-    mySimulation.AddBody(sun);
-    mySimulation.AddBody(earth);
-    mySimulation.AddBody(moon);
+    mySimulation.AddBody(body1);
+    mySimulation.AddBody(body2);
+    mySimulation.AddBody(body3);
 
     while (!glfwWindowShouldClose(window))
     {

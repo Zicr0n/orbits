@@ -25,8 +25,9 @@ public:
 
     void EndSimulation(){
         trails.clear();
-        for (auto& body : bodies)
-            body.Reset();
+        for (size_t i = 0; i < bodies.size(); i++) {
+            bodies[i].Reset();
+        }
     }
 
     void AddBody(CelestialBody body){
@@ -40,28 +41,57 @@ public:
     }
 
     void Update(){
-        float dt = timeStep * timeScale;
+        float dt = timeStep;
+
+        static float accumulator = 0.0f;
+
+        float frameTime = timeStep * timeScale;
+        accumulator += frameTime;
+
+        const float fixedDt = timeStep;
+        
+        while (accumulator >= fixedDt){
+
+        // Gör en lista med accelerationer för varje himlakropp
         std::vector<glm::vec3> accelerations(bodies.size(), glm::vec3(0.0f));
 
+         // Gå igenom varje himlakropp
         for (size_t i = 0; i < bodies.size(); i++) {
+            // För varje himlakropp, gå igenom resten
             for (size_t j = 0; j < bodies.size(); j++) {
-                if (i == j) continue;
+                if (i == j) continue; // Om det är samma, skippa
 
+                // Räkna skillnaden i position, riktningen
                 glm::vec3 diff = bodies[j].position - bodies[i].position;
+
+                // Räkna ut avståndet och kalkulera inte om avståndet är för litet
                 float r = glm::length(diff);
                 if (r < 1e-3f) continue;
 
+                // accelerationStorlek = G * M / r^2, där M = andra himlakroppen , G ör gravitationskonstanten
                 float accelerationMagnitude = gravitationalConstant * bodies[j].mass / (r * r);
+
+                // Lägg till accelerationen för kroppen med indexet "i"
                 accelerations[i] += glm::normalize(diff) * accelerationMagnitude;
             }
         }
 
+        // Loopa igenom alla himlakroppar
         for (size_t i = 0; i < bodies.size(); i++) {
-            bodies[i].currentVelocity += accelerations[i] * dt;
-            bodies[i].position += bodies[i].currentVelocity * dt;
+            // Addera accelerationen multiplicerad med tidsskillnaden till hastigheten
+            bodies[i].currentVelocity += accelerations[i] * fixedDt;
 
-            // Record trail point
+            // Addera hastigheten multiplicerad med tidsskillnaden till positionen
+            bodies[i].position += bodies[i].currentVelocity * fixedDt; 
+        }
+
+        accumulator -= fixedDt;
+        }
+
+        for (size_t i = 0; i < bodies.size(); i++)
+        {
             trails[i].push_back(bodies[i].position * simulationScale);
+
             if (trails[i].size() > maxTrailLength)
                 trails[i].pop_front();
         }
@@ -109,6 +139,33 @@ public:
 
     size_t maxTrailLength = 500;
 
+    std::vector<glm::vec3> ComputeAccelerations()
+    {
+        std::vector<glm::vec3> acc(bodies.size(), glm::vec3(0.0f));
+
+        for (size_t i = 0; i < bodies.size(); i++)
+        {
+            for (size_t j = 0; j < bodies.size(); j++)
+            {
+                if (i == j) continue;
+
+                glm::vec3 diff = bodies[j].position - bodies[i].position;
+
+                float r2 = glm::dot(diff, diff);
+                if (r2 < 1e-6f) continue;
+
+                float invR = 1.0f / sqrt(r2);
+                float invR3 = invR * invR * invR;
+
+                acc[i] += gravitationalConstant *
+                        bodies[j].mass *
+                        diff * invR3;
+            }
+        }
+
+        return acc;
+    }
+
 private:
     std::vector<std::deque<glm::vec3>> trails;
 
@@ -134,9 +191,15 @@ private:
         glBindVertexArray(0);
     }
 
-    void renderTrail(size_t index){
+    void renderTrail(size_t index)
+    {
+        if (index >= trails.size())
+            return;
+
         const auto& trail = trails[index];
-        if (trail.size() < 2) return;
+
+        if (trail.size() < 2)
+            return;
 
         // Lazy init
         if (trailVAO == 0)

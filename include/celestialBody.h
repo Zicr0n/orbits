@@ -58,7 +58,7 @@ public:
 
     void Reset(){
         this->position = startPosition;
-        currentVelocity = glm::vec3(0.0f);
+        currentVelocity = initialVelocity;
     }
 
     void SetStartPosition(glm::vec3 newPos){

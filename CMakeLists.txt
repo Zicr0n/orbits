@@ -23,6 +23,7 @@ target_include_directories(OrbitSim PRIVATE
     external/glad/include
     external/assimp/include
     external/imgui/include
+    external/glm
     include
 )
 
@@ -30,7 +31,6 @@ find_package(glfw3 REQUIRED)
 
 target_link_libraries(OrbitSim PRIVATE
     glfw
-    dl
     assimp
 )
 

@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-#include <format>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -16,78 +15,40 @@
 #include "simulation.h"
 #include "celestialBody.h"
 
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+unsigned int SCR_WIDTH  = 1280;
+unsigned int SCR_HEIGHT = 720;
 
-// camera
-Camera camera(glm::vec3(0.0f, 0.0f, 500.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 1000.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
+bool mouseEnabled = false;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-
-float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
-};  
-
-class Triangle {
-    public : 
-        unsigned int VAO;
-        unsigned int VBO;
-
-        Triangle(){
-            glGenVertexArrays(1, &VAO);
-            glBindVertexArray(VAO);
-
-            glGenBuffers(1, &VBO);
-
-            glBindBuffer(GL_ARRAY_BUFFER, VBO);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindVertexArray(0);
-
-            this->VAO = VAO;
-        };
-        void Draw(){
-            glBindVertexArray(this->VAO);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-        }
-};
 
 int main()
 {
     glfwInit();
-
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window =
-        glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Orbits", nullptr, nullptr);
-
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Orbits", nullptr, nullptr);
     if (!window)
     {
         std::cout << "Failed to create window\n";
+        glfwTerminate();
         return -1;
     }
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
@@ -102,133 +63,133 @@ int main()
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     stbi_set_flip_vertically_on_load(true);
 
-    // IMGUI
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_LINE_SMOOTH);
+    glLineWidth(1.5f);
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
-    ImGuiStyle& style = ImGui::GetStyle();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
 
-    // CUBEMAP
+    Shader ourShader("shaders/shader.vs", "shaders/color.fs");
+    Model planetModel("models/celestialBody/celestialbody.obj");
 
-    //--------
-
-    Triangle triangle;
-
-    Shader defaultShader("shaders/shader.vs", "shaders/shader.fs");
-
-    Shader ourShader("shaders/shader.vs", "shaders/shader.fs");
-    Model ourModel("models/backpack/backpack.obj");
-    
-    // Simulation
-    Model planetModel("models/backpack/backpack.obj");
-
-    std::vector<CelestialBody> bodies;
-
-    float scale = 20.0f; // scale up positions
-    float vScale = 20.0f; // scale up velocities to match
-
-    CelestialBody b1(
-        &planetModel,
-        1.0f, 0.05f,
-        glm::vec3(-0.93240737f, -0.86473146f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    );
-
-    CelestialBody b2(
-        &planetModel,
-        1.0f, 0.05f,
-        glm::vec3(-0.97000436f, 0.24308753f, 0.0f),
-        glm::vec3(0.46620368f, 0.43236573f, 0.0f)
-    );
-
-    CelestialBody b3(
-        &planetModel,
-        1.0f, 0.05f,
-        glm::vec3(0.97000436f, -0.24308753f, 0.0f),
-        glm::vec3(0.46620368f, 0.43236573f, 0.0f)
-    );
-
-    bodies.push_back(b1);
-    bodies.push_back(b2);
-    bodies.push_back(b3);
-
-    Simulation mySimulation(bodies, &camera, &ourShader);
+    Simulation mySimulation(&camera, &ourShader, SCR_WIDTH, SCR_HEIGHT);
 
     bool drawSimulation = true;
-    float sliderVal = 0.0f;
-    float color[4] = {0.0f, 1.0f, 1.0f, 1.0f};
-
     bool isSimulationRunning = false;
     bool isSimulationPaused = false;
 
-    float _mass = 1.0;
-    float _radius = 1.0;
+    float _mass   = 1.0f;
+    float _radius = 1.0f;
+    float _color[4] = {0.0f, 1.0f, 0.0f, 1.0f};
     glm::vec3 _vel = glm::vec3(0.0f);
     glm::vec3 _pos = glm::vec3(0.0f);
 
+    CelestialBody sun(
+        &planetModel,
+        1e8f, 500.0f,
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec4(1.0f, 1.0f, 0.0f, 1.0f)
+    );
+
+   float earthDistance = 40000.0f;
+    float earthOrbitVel =
+        sqrt(gravitationalConstant * 1e8f / earthDistance);
+
+    float moonDistance = 2000.0f;
+    float moonOrbitVel =
+        sqrt(gravitationalConstant * 100.0f / moonDistance);
+
+    CelestialBody earth(
+        &planetModel,
+        10000.0f,
+        150.0f,
+        glm::vec3(0.0f, earthOrbitVel, 0.0f),
+        glm::vec3(earthDistance, 0.0f, 0.0f),
+        glm::vec4(0.0f, 0.5f, 1.0f, 1.0f)
+    );
+
+    CelestialBody moon(
+       &planetModel,
+        100.0f,
+        75.0f,
+        glm::vec3(0.0f, earthOrbitVel + moonOrbitVel, 0.0f),
+        glm::vec3(earthDistance + moonDistance, 0.0f, 0.0f),
+        glm::vec4(0.5f, 0.0f, 1.0f, 1.0f)
+    );
+
+    mySimulation.AddBody(sun);
+    mySimulation.AddBody(earth);
+    mySimulation.AddBody(moon);
+
     while (!glfwWindowShouldClose(window))
     {
-        glClearColor(0.1f, 0.2f, 0.00f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // UI
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
         processInput(window);
 
-        if (isSimulationRunning && !isSimulationPaused){
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (isSimulationRunning && !isSimulationPaused)
             mySimulation.Update();
-        }
 
-        if(drawSimulation){
+        if (drawSimulation)
             mySimulation.Render();
-        }
 
-        // Simulation
-        ImGui::Begin("Hello world!");
-        ImGui::Text("Hello there!");
-        ImGui::Checkbox("Draw?", &drawSimulation);
+        ImGui::Begin("Simulation");
+        ImGui::Checkbox("Draw", &drawSimulation);
+        ImGui::Spacing();
+        
+
+        if (ImGui::CollapsingHeader("Universe"))
+        {
+            ImGui::SliderFloat("Gravitational Constant", &gravitationalConstant, 0.0f, 10000.0f);
+            if (ImGui::Button("Reset Gravitational Constant"))
+                resetGravConstant();
+            ImGui::SliderFloat("Simulation Scale", &simulationScale, 0.001f, 3.0f);
+            ImGui::SliderFloat("Time Scale", &timeScale, 0.01f, 1000.0f);
+        }
 
         ImGui::Spacing();
 
-        if(ImGui::CollapsingHeader("Universe")){
-            ImGui::SliderFloat("Gravitational Constant", &gravitationalConstant, 0.0f, 10000.0f);
-            if(ImGui::Button("Reset Gravitational Constant")){
-                resetGravConstant();
-            }
-
-            ImGui::Spacing();
-            ImGui::SliderFloat("Simulation Scale", &simulationScale, 0.0f, 1.0f);
-
-        }
-
-        if (!isSimulationRunning){
-            if(ImGui::Button("Start Simulation!")){
-                std::cout << "Pressed Start!" << '\n';
+        if (!isSimulationRunning)
+        {
+            if (ImGui::Button("Start Simulation"))
+            {
                 isSimulationRunning = true;
                 mySimulation.StartSimulation();
             }
 
-            if (ImGui::CollapsingHeader("Create a celestial body!")){
-                ImGui::Text("Celestial body");
-                ImGui::SliderFloat3("Initial Position", glm::value_ptr(_pos), -100.0f, 100.0f);
-                ImGui::SliderFloat3("Initial Velocity", glm::value_ptr(_vel), -100.0f, 100.0f);
-                ImGui::SliderFloat("Mass", &_mass, 0.0f, 100000.0f);
-                ImGui::SliderFloat("Radius", &_radius, 0.0f, 100000.0f);
+            ImGui::Spacing();
 
-                if(ImGui::Button("Create Body!")){
-                    CelestialBody newBody(&planetModel, _mass, _radius, _vel, _pos);
-                    mySimulation.AddBody(newBody);
+            if (ImGui::CollapsingHeader("Create Celestial Body"))
+            {
+                ImGui::SliderFloat3("Position",  glm::value_ptr(_pos), -10000.0f, 10000.0f);
+                ImGui::SliderFloat3("Velocity",  glm::value_ptr(_vel), -20000.0f, 20000.0f);
+                ImGui::SliderFloat("Mass",   &_mass,   0.0f, 100000.0f);
+                ImGui::SliderFloat("Radius", &_radius, 0.0f, 5000.0f);
+                ImGui::ColorEdit4("Color", _color);
+
+                if (ImGui::Button("Create Body"))
+                {
+                    mySimulation.AddBody(CelestialBody(
+                        &planetModel, _mass, _radius, _vel, _pos,
+                        glm::vec4(_color[0], _color[1], _color[2], _color[3])
+                    ));
                 }
             }
 
@@ -236,97 +197,76 @@ int main()
 
             for (size_t i = 0; i < mySimulation.bodies.size(); i++)
             {
-                ImGui::PushID(i);
-                std::string label = "Celestial Body " + std::to_string(i);
+                ImGui::PushID(static_cast<int>(i));
+                std::string label = "Body " + std::to_string(i);
 
-                if (ImGui::CollapsingHeader(label.c_str())){
-                    ImGui::Text("Celestial body");
-    
+                if (ImGui::CollapsingHeader(label.c_str()))
+                {
                     CelestialBody& body = mySimulation.bodies[i];
-                    
-                    // Start Position
+
                     glm::vec3 pos = body.startPosition;
-                    if (ImGui::SliderFloat3("Initial Position", glm::value_ptr(pos), -100.0f, 100.0f))
-                    {
-                        body.SetStartPosition(pos); // only called when slider is changed
-                    }
+                    if (ImGui::SliderFloat3("Start Position", glm::value_ptr(pos), -10000.0f, 10000.0f))
+                        body.SetStartPosition(pos);
 
-                    ImGui::Spacing();
-
-                    // Start Velocity
                     glm::vec3 vel = body.initialVelocity;
-                    if (ImGui::SliderFloat3("Initial Velocity", glm::value_ptr(vel), -100.0f, 100.0f))
-                    {
-                        body.SetInitialVelocity(vel); // only called when slider is changed
-                    }
+                    if (ImGui::SliderFloat3("Start Velocity", glm::value_ptr(vel), -20000.0f, 20000.0f))
+                        body.SetInitialVelocity(vel);
 
-                    ImGui::Spacing();
-
-                    // Mass
                     float mass = body.mass;
-                    if (ImGui::SliderFloat("Mass", &mass, 0.0f, 100.0f))
-                    {
-                        body.mass = mass; // only called when slider is changed
-                    }
+                    if (ImGui::SliderFloat("Mass", &mass, 0.0f, 100000.0f))
+                        body.mass = mass;
 
-                    ImGui::Spacing();
-
-                    // Radius
                     float radius = body.radius;
-                    if (ImGui::SliderFloat("Radius", &radius, 0.0f, 100.0f))
-                    {
-                        body.radius = radius; // only called when slider is changed
-                    }
+                    if (ImGui::SliderFloat("Radius", &radius, 0.0f, 5000.0f))
+                        body.radius = radius;
+
+                    float col[4] = { body.color.r, body.color.g, body.color.b, body.color.a };
+                    if (ImGui::ColorEdit4("Color", col))
+                        body.color = glm::vec4(col[0], col[1], col[2], col[3]);
 
                     ImGui::Spacing();
-
-                    // Remove button
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));
-                    bool removed = ImGui::Button("Remove Celestial Body");
+                    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.5f, 0.0f, 0.0f, 1.0f));
+                    bool removed = ImGui::Button("Remove");
                     ImGui::PopStyleColor(3);
 
-                    if (removed) {
+                    if (removed)
+                    {
                         mySimulation.RemoveBody(i);
                         ImGui::PopID();
                         break;
                     }
-
                 }
 
-                ImGui::Spacing();
                 ImGui::Spacing();
                 ImGui::PopID();
             }
-
-        } else{
-            if (ImGui::Button("Focus All")) {
+        }
+        else
+        {
+            if (ImGui::Button("Focus All"))
                 mySimulation.FocusAll(camera);
-            }
-            if(!isSimulationPaused){
-                if(ImGui::Button("Pause Simulation")){
-                    std::cout << "Pressed pause!" << '\n';
+
+            if (!isSimulationPaused)
+            {
+                if (ImGui::Button("Pause"))
                     isSimulationPaused = true;
-                }
-            }else{
-                if(ImGui::Button("Continue Simulation")){
-                    std::cout << "Pressed continue!" << '\n';
-                    isSimulationPaused = false;
-                }
             }
-            
-            if(ImGui::Button("End Simulation!")){
-                std::cout << "Pressed End!" << '\n';
+            else
+            {
+                if (ImGui::Button("Continue"))
+                    isSimulationPaused = false;
+            }
+
+            if (ImGui::Button("End Simulation"))
+            {
                 isSimulationRunning = false;
-                isSimulationPaused = false;
+                isSimulationPaused  = false;
                 mySimulation.EndSimulation();
             }
-
         }
 
-        ImGui::SliderFloat("Slider", &sliderVal, 0.0f, 1e3f);
-        ImGui::ColorEdit4("Color", color);
         ImGui::End();
 
         ImGui::Render();
@@ -336,9 +276,6 @@ int main()
         glfwPollEvents();
     }
 
-    // glDeleteVertexArrays(1, &VAO);
-    // glDeleteBuffers(1, &VBO);
-
     glfwTerminate();
     ImGui_ImplGlfw_Shutdown();
     ImGui_ImplOpenGL3_Shutdown();
@@ -347,10 +284,19 @@ int main()
     return 0;
 }
 
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    // Toggle mouse look with Tab
+    if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+    {
+        mouseEnabled = !mouseEnabled;
+        glfwSetInputMode(window, GLFW_CURSOR,
+            mouseEnabled ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+        firstMouse = true;
+    }
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -364,6 +310,8 @@ void processInput(GLFWwindow *window)
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
+    if (!mouseEnabled) return;
+
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
 
@@ -374,19 +322,19 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
         firstMouse = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    float xoffset =  xpos - lastX;
+    float yoffset =  lastY - ypos;
 
     lastX = xpos;
     lastY = ypos;
 
-    // camera.ProcessMouseMovement(xoffset, yoffset);
+    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
+    SCR_WIDTH  = width;
+    SCR_HEIGHT = height;
     glViewport(0, 0, width, height);
 }
 

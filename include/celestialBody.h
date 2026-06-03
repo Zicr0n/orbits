@@ -28,46 +28,30 @@ public:
     glm::vec3 initialVelocity = glm::vec3(0.0f);
     glm::vec3 startPosition = glm::vec3(0.0f);
 
-    CelestialBody(Model* model, float _mass, float _radius, glm::vec3 initialVel, glm::vec3 initialPos) : model(model) {
+    glm::vec4 color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+
+    CelestialBody(Model* model, float _mass, float _radius, glm::vec3 initialVel, glm::vec3 initialPos, glm::vec4 initColor ) : model(model) {
         initialVelocity = initialVel;
         this->startPosition = initialPos;
         this->position = initialPos;
         mass = _mass;
         radius = _radius;
+        color = initColor;
+
         Awake();
     }
 
     void Init(){
         Awake();
     }
-    
-    void UpdateVelocity(const std::vector<CelestialBody>& allBodies, float timeStep, size_t selfIndex){
-        for (size_t i = 0; i < allBodies.size(); i++)
-        {
-            if (i == selfIndex) continue;
-
-            const CelestialBody& other = allBodies[i];
-            glm::vec3 difference = other.position - this->position;
-            
-            float sqrDist = glm::dot(difference, difference);
-            if (sqrDist < 0.0001f) continue; // avoid division by zero on collision
-            
-            glm::vec3 forceDir = glm::normalize(difference);
-            glm::vec3 acceleration = forceDir * gravitationalConstant * other.mass / sqrDist;
-            this->currentVelocity += acceleration * timeStep * timeScale;
-        }
-    }
-
-    void UpdatePosition(float timeStep) {
-        this->position += this->currentVelocity * timeStep * timeScale;
-    }
 
     void Render(Shader* shader){
         glm::mat4 model_mat = glm::mat4(1.0f);
         model_mat = glm::translate(model_mat, this->position * simulationScale);
-        // model_mat = glm::scale(model_mat, glm::vec3(radius * simulationScale));  // scale radius too
+        model_mat = glm::scale(model_mat, glm::vec3(radius * simulationScale));  // scale radius too
 
         shader->setMat4("model", model_mat);
+        shader->setVec4("color", color);
 
         model->Draw(*shader);
     }

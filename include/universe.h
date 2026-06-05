@@ -9,7 +9,7 @@ constexpr float defaultGravConstant = 6.6743e-11 * (1.0f / (defaultSimulationSca
 
 constexpr float timeStep = 0.001f; 
 
-inline float gravitationalConstant = 1.0f;  
+inline float gravitationalConstant = 10.0f;  
 inline float simulationScale = 1.0f;    
 inline float timeScale = 1.0f;              
 
